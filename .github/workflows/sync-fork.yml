@@ -1,0 +1,63 @@
+# Auto-sync a fork with its upstream repo.
+name: Sync fork with upstream
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # cada hora en punto :00
+  workflow_dispatch:       # también permite ejecutar manual
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/paperclipai/paperclip.git
+
+      - name: Fetch upstream and origin
+        run: |
+          git fetch upstream
+          git fetch origin
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          LOCAL=$(git rev-parse origin/master)
+          UPSTREAM=$(git rev-parse upstream/master)
+          echo "local=$LOCAL upstream=$UPSTREAM"
+          if [ "$LOCAL" = "$UPSTREAM" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream has new commits."
+          fi
+
+      - name: Merge upstream into fork
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git checkout master
+          git merge upstream/master --no-edit
+          git push origin master
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.check.outputs.changed }}" = "true" ]; then
+            echo "Fork synced with upstream."
+          else
+            echo "No changes — fork is current."
+          fi
