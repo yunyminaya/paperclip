@@ -27,7 +27,7 @@ export const defaultCreateValues: CreateConfigValues = {
   runtimeServicesJson: "",
   maxTurnsPerRun: 1000,
   heartbeatEnabled: false,
-  intervalSec: 300,
+  intervalSec: 1800,
   // openclaw_gateway defaults
   authToken: "",
   agentId: "",
