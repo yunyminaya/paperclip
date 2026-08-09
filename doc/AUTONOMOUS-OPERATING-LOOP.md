@@ -8,8 +8,12 @@ Paperclip can represent active goals as measurable operating objectives with a K
 
 The dashboard exposes the current scorecard. Goal creation supports the KPI key, target, and target date. Observations can be submitted through `POST /api/goals/:id/observations` by an authorized board or same-company agent.
 
+## MCP and skill capabilities
+
+`GET /api/companies/:companyId/operating-loop/capabilities` combines the existing governed MCP catalog with company skills. It reports readiness for sales/CRM, banking/cash, accounting/tax, communications, and analytics. A domain is `ready` only when Paperclip sees both an enabled, active, non-failing MCP tool and a compatible skill. The daily review embeds missing capability information and directs the CEO to create setup work instead of attempting an unavailable action. Tool profiles, approvals, credential isolation, and invocation policies remain authoritative at execution time.
+
 ## Known limits
 
 - The daily run endpoint is ready for a routine or external scheduler, but this slice does not silently activate automation for existing companies.
-- Revenue, cash, margin, conversion, and churn become scorecard metrics when connectors or agents submit observations; banking, CRM, accounting, telephony, and tax filing still require real provider integrations and credentials.
+- Revenue, cash, margin, conversion, and churn become scorecard metrics when MCP tools or agents submit observations; banking, CRM, accounting, telephony, and tax filing require configured MCP servers, appropriate company skills, and provider credentials.
 - Automatic strategy/model/skill changes remain governed recommendations until evaluation evidence and rollback policies are implemented.

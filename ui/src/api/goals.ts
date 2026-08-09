@@ -10,4 +10,5 @@ export const goalsApi = {
   remove: (id: string) => api.delete<Goal>(`/goals/${id}`),
   scorecard: (companyId: string) => api.get<{ generatedAt: string; status: "losing" | "on_track" | "unknown"; behindCount: number; items: Array<{ goal: Goal; observation: { value: number } | null; status: string }> }>(`/companies/${companyId}/operating-loop/scorecard`),
   addObservation: (id: string, data: { value: number; source?: string; note?: string }) => api.post(`/goals/${id}/observations`, data),
+  capabilities: (companyId: string) => api.get<{ generatedAt: string; summary: { ready: number; incomplete: number; activeMcpTools: number; compatibleSkills: number }; domains: Array<{ key: string; label: string; status: "ready" | "missing_skill" | "missing_mcp" | "missing"; tools: Array<{ id: string; name: string }>; skills: Array<{ id: string; key: string; name: string }> }> }>(`/companies/${companyId}/operating-loop/capabilities`),
 };

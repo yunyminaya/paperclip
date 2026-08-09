@@ -101,6 +101,11 @@ export function Dashboard() {
     queryFn: () => goalsApi.scorecard(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
+  const { data: operatingCapabilities } = useQuery({
+    queryKey: ["operating-loop-capabilities", selectedCompanyId],
+    queryFn: () => goalsApi.capabilities(selectedCompanyId!),
+    enabled: !!selectedCompanyId,
+  });
 
   const { data: companyMembers } = useQuery({
     queryKey: queryKeys.access.companyUserDirectory(selectedCompanyId!),
@@ -323,6 +328,7 @@ export function Dashboard() {
               <div>
                 <h3 className="text-sm font-semibold">Autonomous operating scorecard</h3>
                 <p className="text-xs text-muted-foreground">{scorecard?.items.length ?? 0} measurable objectives · {scorecard?.behindCount ?? 0} behind</p>
+                <p className="text-xs text-muted-foreground">{operatingCapabilities?.summary.ready ?? 0}/{operatingCapabilities?.domains.length ?? 5} MCP + skill domains ready · {operatingCapabilities?.summary.activeMcpTools ?? 0} tools</p>
               </div>
               <StatusIcon status={scorecard?.status === "losing" ? "blocked" : scorecard?.status === "on_track" ? "done" : "backlog"} />
             </div>

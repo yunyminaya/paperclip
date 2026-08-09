@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { createGoalSchema, updateGoalSchema, createGoalMetricObservationSchema } from "@paperclipai/shared";
 import { trackGoalCreated } from "@paperclipai/shared/telemetry";
 import { validate } from "../middleware/validate.js";
-import { goalService, issueService, logActivity } from "../services/index.js";
+import { goalService, issueService, logActivity, operatingCapabilityService } from "../services/index.js";
 import { assertCompanyAccess, getAccessibleResource, getActorInfo } from "./authz.js";
 import { getTelemetryClient } from "../telemetry.js";
 
@@ -13,6 +13,7 @@ export function goalRoutes(db: Db) {
   const router = Router();
   const svc = goalService(db);
   const issues = issueService(db);
+  const capabilities = operatingCapabilityService(db);
 
   router.get("/companies/:companyId/goals", async (req, res) => {
     const companyId = req.params.companyId as string;
@@ -34,16 +35,23 @@ export function goalRoutes(db: Db) {
     res.json(await svc.scorecard(companyId));
   });
 
+  router.get("/companies/:companyId/operating-loop/capabilities", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    res.json(await capabilities.inventory(companyId));
+  });
+
   router.post("/companies/:companyId/operating-loop/run", async (req, res) => {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
     const scorecard = await svc.scorecard(companyId);
+    const capabilityInventory = await capabilities.inventory(companyId);
     const ceo = await db.select().from(agents).where(and(eq(agents.companyId, companyId), eq(agents.role, "ceo"))).then((rows) => rows.find((agent) => agent.status !== "paused" && agent.status !== "terminated") ?? null);
     if (!ceo) return res.status(422).json({ error: "An enabled CEO agent is required" });
     const day = new Date().toISOString().slice(0, 10);
     const issue = await issues.create(companyId, {
       title: `Daily operating review — ${day}`,
-      description: `Evaluate the company scorecard and act on deviations.\n\nCompany state: ${scorecard.status}. Behind: ${scorecard.behindCount}.\n\nFor every off-track objective: identify the highest-return next action, decide continue/change/stop, create governed child tasks, require independent verification, and report expected return and cost to the CEO.`,
+      description: `Evaluate the company scorecard and act on deviations.\n\nCompany state: ${scorecard.status}. Behind: ${scorecard.behindCount}.\nMCP + skill readiness: ${capabilityInventory.summary.ready}/${capabilityInventory.domains.length} domains ready. Incomplete: ${capabilityInventory.domains.filter((domain) => domain.status !== "ready").map((domain) => `${domain.label} (${domain.status})`).join(", ") || "none"}.\n\nFor every off-track objective: identify the highest-return next action, select an available MCP tool and compatible skill, decide continue/change/stop, create governed child tasks, require independent verification, and report expected return and cost to the CEO. If a required capability is incomplete, create setup work instead of pretending the action can execute.`,
       status: "todo", priority: scorecard.behindCount ? "high" : "medium", assigneeAgentId: ceo.id,
       goalId: scorecard.items.find((item) => item.status === "off_track")?.goal.id ?? null,
       originKind: "autonomous_operating_loop", originId: day,
