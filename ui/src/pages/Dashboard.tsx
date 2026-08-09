@@ -29,6 +29,7 @@ import { Card } from "@/components/ui/card";
 import type { Agent, Issue } from "@paperclipai/shared";
 import { PluginSlotOutlet } from "@/plugins/slots";
 import { SmokeLabDashboardCard } from "../components/SmokeLabDashboardCard";
+import { goalsApi } from "../api/goals";
 
 const DASHBOARD_ACTIVITY_LIMIT = 10;
 
@@ -93,6 +94,11 @@ export function Dashboard() {
   const { data: projects } = useQuery({
     queryKey: queryKeys.projects.list(selectedCompanyId!, { includeArchived: true }),
     queryFn: () => projectsApi.list(selectedCompanyId!, { includeArchived: true }),
+    enabled: !!selectedCompanyId,
+  });
+  const { data: scorecard } = useQuery({
+    queryKey: ["operating-loop", selectedCompanyId],
+    queryFn: () => goalsApi.scorecard(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
 
@@ -311,6 +317,22 @@ export function Dashboard() {
           </div>
 
           <SmokeLabDashboardCard companyId={selectedCompanyId!} />
+
+          <Card className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold">Autonomous operating scorecard</h3>
+                <p className="text-xs text-muted-foreground">{scorecard?.items.length ?? 0} measurable objectives · {scorecard?.behindCount ?? 0} behind</p>
+              </div>
+              <StatusIcon status={scorecard?.status === "losing" ? "blocked" : scorecard?.status === "on_track" ? "done" : "backlog"} />
+            </div>
+            {scorecard?.items.slice(0, 5).map((item) => (
+              <div key={item.goal.id} className="mt-3 flex items-center justify-between gap-3 text-sm">
+                <span className="truncate">{item.goal.title}</span>
+                <span className="shrink-0 text-muted-foreground">{item.observation?.value ?? "No data"} / {item.goal.targetValue} · {item.status}</span>
+              </div>
+            ))}
+          </Card>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <ChartCard title="Run Activity" subtitle="Last 14 days">

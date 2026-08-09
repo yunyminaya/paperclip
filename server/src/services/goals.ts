@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { goals } from "@paperclipai/db";
+import { goals, goalMetricObservations } from "@paperclipai/db";
 
 type GoalReader = Pick<Db, "select">;
 
@@ -54,6 +54,37 @@ export function goalService(db: Db) {
         .then((rows) => rows[0] ?? null),
 
     getDefaultCompanyGoal: (companyId: string) => getDefaultCompanyGoal(db, companyId),
+
+    listObservations: (companyId: string, goalId: string) => db.select().from(goalMetricObservations)
+      .where(and(eq(goalMetricObservations.companyId, companyId), eq(goalMetricObservations.goalId, goalId)))
+      .orderBy(desc(goalMetricObservations.observedAt)),
+
+    addObservation: (companyId: string, goalId: string, data: Omit<typeof goalMetricObservations.$inferInsert, "companyId" | "goalId">) =>
+      db.insert(goalMetricObservations).values({ ...data, companyId, goalId }).returning().then((rows) => rows[0]),
+
+    scorecard: async (companyId: string, now = new Date()) => {
+      const measurable = await db.select().from(goals).where(and(eq(goals.companyId, companyId), eq(goals.status, "active")));
+      const observations = await db.select().from(goalMetricObservations)
+        .where(eq(goalMetricObservations.companyId, companyId)).orderBy(desc(goalMetricObservations.observedAt));
+      const latest = new Map<string, typeof observations[number]>();
+      for (const item of observations) if (!latest.has(item.goalId)) latest.set(item.goalId, item);
+      const items = measurable.filter((goal) => goal.metricKey && goal.targetValue != null).map((goal) => {
+        const observation = latest.get(goal.id) ?? null;
+        const value = observation?.value ?? null;
+        const achieved = value != null && (goal.targetOperator === "at_most" ? value <= goal.targetValue! : value >= goal.targetValue!);
+        const overdue = Boolean(goal.dueAt && goal.dueAt.getTime() < now.getTime() && !achieved);
+        let status: "achieved" | "on_track" | "off_track" | "missing_data" = achieved ? "achieved" : value == null ? "missing_data" : overdue ? "off_track" : "on_track";
+        if (!achieved && value != null && goal.targetOperator !== "at_most" && goal.dueAt) {
+          const start = goal.startsAt ?? goal.createdAt;
+          const elapsed = Math.max(0, now.getTime() - start.getTime());
+          const total = Math.max(1, goal.dueAt.getTime() - start.getTime());
+          if (value / goal.targetValue! + 0.05 < Math.min(1, elapsed / total)) status = "off_track";
+        }
+        return { goal, observation, status };
+      });
+      const behind = items.filter((item) => item.status === "off_track");
+      return { generatedAt: now, status: behind.length ? "losing" : items.length ? "on_track" : "unknown", items, behindCount: behind.length };
+    },
 
     create: (companyId: string, data: Omit<typeof goals.$inferInsert, "companyId">) =>
       db

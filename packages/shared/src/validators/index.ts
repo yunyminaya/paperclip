@@ -586,6 +586,7 @@ export {
 export {
   createGoalSchema,
   updateGoalSchema,
+  createGoalMetricObservationSchema,
   type CreateGoal,
   type UpdateGoal,
 } from "./goal.js";

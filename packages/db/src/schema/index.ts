@@ -35,6 +35,7 @@ export { workspaceOperations } from "./workspace_operations.js";
 export { workspaceRuntimeServices } from "./workspace_runtime_services.js";
 export { projectGoals } from "./project_goals.js";
 export { goals } from "./goals.js";
+export { goalMetricObservations } from "./goal_metric_observations.js";
 export { folders } from "./folders.js";
 export { issues } from "./issues.js";
 export { issueWatchdogs } from "./issue_watchdogs.js";

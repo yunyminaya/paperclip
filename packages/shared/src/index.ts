@@ -1816,6 +1816,7 @@ export {
   type PreviewIssueTreeControl,
   type ReleaseIssueTreeHold,
   createGoalSchema,
+  createGoalMetricObservationSchema,
   updateGoalSchema,
   type CreateGoal,
   type UpdateGoal,

@@ -42,6 +42,9 @@ export function NewGoalDialog() {
   const [status, setStatus] = useState("planned");
   const [level, setLevel] = useState("task");
   const [parentId, setParentId] = useState("");
+  const [metricKey, setMetricKey] = useState("");
+  const [targetValue, setTargetValue] = useState("");
+  const [dueAt, setDueAt] = useState("");
   const [expanded, setExpanded] = useState(false);
 
   const [statusOpen, setStatusOpen] = useState(false);
@@ -81,6 +84,9 @@ export function NewGoalDialog() {
     setStatus("planned");
     setLevel("task");
     setParentId("");
+    setMetricKey("");
+    setTargetValue("");
+    setDueAt("");
     setExpanded(false);
   }
 
@@ -92,6 +98,10 @@ export function NewGoalDialog() {
       status,
       level,
       ...(appliedParentId ? { parentId: appliedParentId } : {}),
+      ...(metricKey.trim() && targetValue !== "" ? {
+        metricKey: metricKey.trim(), targetValue: Number(targetValue), targetOperator: "at_least",
+        ...(dueAt ? { dueAt: new Date(dueAt).toISOString() } : {}),
+      } : {}),
     });
   }
 
@@ -264,6 +274,12 @@ export function NewGoalDialog() {
               ))}
             </PopoverContent>
           </Popover>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 px-4 py-2 border-t border-border">
+          <input className="rounded-md border border-border bg-transparent px-2 py-1.5 text-xs" placeholder="KPI (e.g. revenue)" value={metricKey} onChange={(e) => setMetricKey(e.target.value)} />
+          <input className="rounded-md border border-border bg-transparent px-2 py-1.5 text-xs" type="number" placeholder="Target" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} />
+          <input className="rounded-md border border-border bg-transparent px-2 py-1.5 text-xs" type="date" aria-label="Target date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
         </div>
 
         {/* Footer */}

@@ -8,4 +8,6 @@ export const goalsApi = {
     api.post<Goal>(`/companies/${companyId}/goals`, data),
   update: (id: string, data: Record<string, unknown>) => api.patch<Goal>(`/goals/${id}`, data),
   remove: (id: string) => api.delete<Goal>(`/goals/${id}`),
+  scorecard: (companyId: string) => api.get<{ generatedAt: string; status: "losing" | "on_track" | "unknown"; behindCount: number; items: Array<{ goal: Goal; observation: { value: number } | null; status: string }> }>(`/companies/${companyId}/operating-loop/scorecard`),
+  addObservation: (id: string, data: { value: number; source?: string; note?: string }) => api.post(`/goals/${id}/observations`, data),
 };
