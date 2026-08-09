@@ -17,6 +17,7 @@ import type {
   IssueHarnessKind,
   IssueOriginKind,
   IssuePriority,
+  IssueReviewPolicy,
   IssueRecoveryActionKind,
   IssueRecoveryActionOutcome,
   IssueRecoveryActionOwnerType,
@@ -152,6 +153,7 @@ export interface AcceptedPlanDecompositionChild {
   workMode: IssueWorkMode;
   harnessKind?: IssueHarnessKind | null;
   priority: IssuePriority;
+  reviewPolicy?: IssueReviewPolicy | null;
   assigneeAgentId?: string | null;
   assigneeUserId?: string | null;
   requestDepth?: number;
@@ -782,6 +784,7 @@ export interface Issue {
   status: IssueStatus;
   workMode: IssueWorkMode;
   priority: IssuePriority;
+  reviewPolicy: IssueReviewPolicy | null;
   assigneeAgentId: string | null;
   assigneeUserId: string | null;
   checkoutRunId: string | null;
@@ -866,6 +869,7 @@ export type CompactIssue = Pick<
   | "status"
   | "workMode"
   | "priority"
+  | "reviewPolicy"
   | "assigneeAgentId"
   | "assigneeUserId"
   | "checkoutRunId"
@@ -990,6 +994,7 @@ export interface IssueCommentMetadataAgentLinkRow extends IssueCommentMetadataRo
 export interface IssueCommentMetadataRunLinkRow extends IssueCommentMetadataRowBase {
   type: "run_link";
   runId: string;
+  agentId?: string | null;
   title?: string | null;
 }
 
