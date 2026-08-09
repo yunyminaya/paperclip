@@ -4,6 +4,20 @@ import { goals, goalMetricObservations } from "@paperclipai/db";
 
 type GoalReader = Pick<Db, "select">;
 
+type MeasurableGoal = Pick<typeof goals.$inferSelect, "targetValue" | "targetOperator" | "startsAt" | "dueAt" | "createdAt">;
+
+export function evaluateGoalMetric(goal: MeasurableGoal, value: number | null, now: Date): "achieved" | "on_track" | "off_track" | "missing_data" {
+  if (value == null || goal.targetValue == null) return "missing_data";
+  if (goal.targetOperator === "at_most") return value <= goal.targetValue ? "achieved" : "off_track";
+  if (value >= goal.targetValue) return "achieved";
+  if (!goal.dueAt) return "on_track";
+  if (goal.dueAt.getTime() <= now.getTime()) return "off_track";
+  const start = goal.startsAt ?? goal.createdAt;
+  if (now.getTime() <= start.getTime() || goal.targetValue <= 0 || goal.dueAt.getTime() <= start.getTime()) return "on_track";
+  const elapsedRatio = (now.getTime() - start.getTime()) / (goal.dueAt.getTime() - start.getTime());
+  return value / goal.targetValue + 0.05 < elapsedRatio ? "off_track" : "on_track";
+}
+
 export async function getDefaultCompanyGoal(db: GoalReader, companyId: string) {
   const activeRootGoal = await db
     .select()
@@ -64,26 +78,20 @@ export function goalService(db: Db) {
 
     scorecard: async (companyId: string, now = new Date()) => {
       const measurable = await db.select().from(goals).where(and(eq(goals.companyId, companyId), eq(goals.status, "active")));
-      const observations = await db.select().from(goalMetricObservations)
-        .where(eq(goalMetricObservations.companyId, companyId)).orderBy(desc(goalMetricObservations.observedAt));
+      const observations = await db.selectDistinctOn([goalMetricObservations.goalId]).from(goalMetricObservations)
+        .where(eq(goalMetricObservations.companyId, companyId))
+        .orderBy(goalMetricObservations.goalId, desc(goalMetricObservations.observedAt), desc(goalMetricObservations.createdAt));
       const latest = new Map<string, typeof observations[number]>();
       for (const item of observations) if (!latest.has(item.goalId)) latest.set(item.goalId, item);
       const items = measurable.filter((goal) => goal.metricKey && goal.targetValue != null).map((goal) => {
         const observation = latest.get(goal.id) ?? null;
         const value = observation?.value ?? null;
-        const achieved = value != null && (goal.targetOperator === "at_most" ? value <= goal.targetValue! : value >= goal.targetValue!);
-        const overdue = Boolean(goal.dueAt && goal.dueAt.getTime() < now.getTime() && !achieved);
-        let status: "achieved" | "on_track" | "off_track" | "missing_data" = achieved ? "achieved" : value == null ? "missing_data" : overdue ? "off_track" : "on_track";
-        if (!achieved && value != null && goal.targetOperator !== "at_most" && goal.dueAt) {
-          const start = goal.startsAt ?? goal.createdAt;
-          const elapsed = Math.max(0, now.getTime() - start.getTime());
-          const total = Math.max(1, goal.dueAt.getTime() - start.getTime());
-          if (value / goal.targetValue! + 0.05 < Math.min(1, elapsed / total)) status = "off_track";
-        }
+        const status = evaluateGoalMetric(goal, value, now);
         return { goal, observation, status };
       });
       const behind = items.filter((item) => item.status === "off_track");
-      return { generatedAt: now, status: behind.length ? "losing" : items.length ? "on_track" : "unknown", items, behindCount: behind.length };
+      const missing = items.filter((item) => item.status === "missing_data");
+      return { generatedAt: now, status: behind.length ? "losing" : !items.length || missing.length ? "unknown" : "on_track", items, behindCount: behind.length, missingDataCount: missing.length };
     },
 
     create: (companyId: string, data: Omit<typeof goals.$inferInsert, "companyId">) =>

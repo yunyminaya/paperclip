@@ -77,6 +77,7 @@ import {
   updateFolderSchema,
   // Goal
   createGoalSchema,
+  createGoalMetricObservationSchema,
   updateGoalSchema,
   // Secret
   createSecretSchema,
@@ -925,6 +926,8 @@ const CREATED_OPERATIONS = new Set([
   "POST /api/companies/{companyId}/environments",
   "POST /api/environments/{environmentId}/custom-image-setup-sessions",
   "POST /api/companies/{companyId}/goals",
+  "POST /api/companies/{companyId}/operating-loop/run",
+  "POST /api/goals/{id}/observations",
   "POST /api/companies/{companyId}/labels",
   "POST /api/issues/{id}/documents/{key}/annotations",
   "POST /api/issues/{id}/documents/{key}/annotations/{threadId}/comments",
@@ -2787,6 +2790,33 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
+  path: "/api/companies/{companyId}/operating-loop/scorecard",
+  tags: ["goals"],
+  summary: "Evaluate the measurable company scorecard",
+  request: { params: z.object({ companyId: z.string().uuid() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/companies/{companyId}/operating-loop/capabilities",
+  tags: ["goals"],
+  summary: "Inspect governed MCP and skill readiness",
+  request: { params: z.object({ companyId: z.string().uuid() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/companies/{companyId}/operating-loop/run",
+  tags: ["goals"],
+  summary: "Create and queue today's CEO operating review",
+  request: { params: z.object({ companyId: z.string().uuid() }) },
+  responses: { 201: r.ok(), 401: r.unauthorized, 403: r.forbidden, 422: r.unprocessable },
+});
+
+registry.registerPath({
+  method: "get",
   path: "/api/companies/{companyId}/goals",
   tags: ["goals"],
   summary: "List goals in a company",
@@ -2813,6 +2843,27 @@ registry.registerPath({
   summary: "Get a goal",
   request: { params: z.object({ id: z.string() }) },
   responses: { 200: r.ok(), 401: r.unauthorized, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/goals/{id}/observations",
+  tags: ["goals"],
+  summary: "List metric observations for a goal",
+  request: { params: z.object({ id: z.string().uuid() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/goals/{id}/observations",
+  tags: ["goals"],
+  summary: "Record an attributed metric observation",
+  request: {
+    params: z.object({ id: z.string().uuid() }),
+    body: jsonBody(createGoalMetricObservationSchema),
+  },
+  responses: { 201: r.ok(), 400: r.badRequest, 401: r.unauthorized, 404: r.notFound, 422: r.unprocessable },
 });
 
 registry.registerPath({

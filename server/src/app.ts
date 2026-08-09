@@ -94,6 +94,7 @@ import { createCachedViteHtmlRenderer } from "./vite-html-renderer.js";
 import { DEFAULT_JSON_BODY_LIMIT, PORTABLE_JSON_BODY_LIMIT } from "./http/body-limits.js";
 import { COMPANY_IMPORT_API_PATH } from "./routes/company-import-paths.js";
 import { apiCompression } from "./middleware/api-compression.js";
+import type { IssueAssignmentWakeupDeps } from "./services/issue-assignment-wakeup.js";
 
 type UiMode = "none" | "static" | "vite-dev";
 const FEEDBACK_EXPORT_FLUSH_INTERVAL_MS = 5_000;
@@ -272,6 +273,7 @@ export async function createApp(
     managedPluginAutoInstall?: readonly string[] | null;
     /** Test override for the bundled plugin catalog root. */
     bundledPluginCatalogRoot?: string;
+    heartbeatWakeup?: IssueAssignmentWakeupDeps | null;
   },
 ) {
   const app = express();
@@ -396,7 +398,7 @@ export async function createApp(
       : undefined,
   }));
   api.use(executionWorkspaceRoutes(db, { pluginWorkerManager: workerManager }));
-  api.use(goalRoutes(db));
+  api.use(goalRoutes(db, { heartbeat: opts.heartbeatWakeup }));
   api.use(boardChatRoutes(db, { deploymentMode: opts.deploymentMode }));
   api.use(approvalRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(secretRoutes(db));

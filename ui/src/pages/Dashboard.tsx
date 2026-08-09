@@ -96,12 +96,12 @@ export function Dashboard() {
     queryFn: () => projectsApi.list(selectedCompanyId!, { includeArchived: true }),
     enabled: !!selectedCompanyId,
   });
-  const { data: scorecard } = useQuery({
+  const { data: scorecard, error: scorecardError } = useQuery({
     queryKey: ["operating-loop", selectedCompanyId],
     queryFn: () => goalsApi.scorecard(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
-  const { data: operatingCapabilities } = useQuery({
+  const { data: operatingCapabilities, error: operatingCapabilitiesError } = useQuery({
     queryKey: ["operating-loop-capabilities", selectedCompanyId],
     queryFn: () => goalsApi.capabilities(selectedCompanyId!),
     enabled: !!selectedCompanyId,
@@ -226,6 +226,8 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {scorecardError && <p className="text-sm text-destructive">Operating scorecard: {scorecardError.message}</p>}
+      {operatingCapabilitiesError && <p className="text-sm text-destructive">MCP and skill readiness: {operatingCapabilitiesError.message}</p>}
 
       {hasNoAgents && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-950/60">

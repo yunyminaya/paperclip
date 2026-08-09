@@ -737,6 +737,7 @@ export async function startServer(): Promise<StartedServer> {
     uiMode,
     serverPort: listenPort,
     storageService,
+    heartbeatWakeup: heartbeat,
     feedbackExportService: feedback,
     databaseBackupService: {
       runManualBackup: async () => {

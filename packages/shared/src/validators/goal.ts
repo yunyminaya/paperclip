@@ -16,7 +16,9 @@ const goalFieldsSchema = z.object({
   dueAt: z.coerce.date().optional().nullable(),
 });
 
-export const createGoalSchema = goalFieldsSchema.refine((value) => value.targetValue == null || value.metricKey != null, { message: "metricKey is required when targetValue is set", path: ["metricKey"] });
+export const createGoalSchema = goalFieldsSchema
+  .refine((value) => value.targetValue == null || value.metricKey != null, { message: "metricKey is required when targetValue is set", path: ["metricKey"] })
+  .refine((value) => !value.startsAt || !value.dueAt || value.dueAt > value.startsAt, { message: "dueAt must be after startsAt", path: ["dueAt"] });
 
 export type CreateGoal = z.infer<typeof createGoalSchema>;
 

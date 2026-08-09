@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { companySkills, toolApplications, toolCatalogEntries, toolConnections } from "@paperclipai/db";
+import { agents, companySkills, toolApplications, toolCatalogEntries, toolConnections } from "@paperclipai/db";
 import { isToolConnectionAttentionHealth } from "@paperclipai/shared";
+import { toolAccessService } from "./tool-access.js";
 
 export const OPERATING_CAPABILITY_DOMAINS = [
   { key: "sales_crm", label: "Sales & CRM", terms: ["crm", "sales", "lead", "pipeline", "hubspot", "apollo"] },
@@ -22,17 +23,30 @@ export function matchesOperatingDomain(text: string, terms: readonly string[]): 
 export function operatingCapabilityService(db: Db) {
   return {
     inventory: async (companyId: string) => {
-      const [applications, connections, catalog, skills] = await Promise.all([
+      const [applications, connections, catalog, skills, companyAgents] = await Promise.all([
         db.select().from(toolApplications).where(eq(toolApplications.companyId, companyId)),
         db.select().from(toolConnections).where(eq(toolConnections.companyId, companyId)),
         db.select().from(toolCatalogEntries).where(eq(toolCatalogEntries.companyId, companyId)),
         db.select().from(companySkills).where(eq(companySkills.companyId, companyId)),
+        db.select().from(agents).where(eq(agents.companyId, companyId)),
       ]);
+      const operator = companyAgents.find((agent) => agent.role.trim().toLowerCase() === "ceo" && ["active", "idle", "running"].includes(agent.status)) ?? null;
+      const effective = operator ? await toolAccessService(db).getEffectiveProfilesForAgent(companyId, operator.id) : null;
+      const allowedToolIds = new Set(effective?.allowedTools.map((tool) => tool.id) ?? []);
+      const installedConnectionIds = new Set(effective?.installedConnections.map((connection) => connection.id) ?? []);
       const connectionById = new Map(connections.map((connection) => [connection.id, connection]));
       const applicationById = new Map(applications.map((application) => [application.id, application]));
       const usableTools = catalog.filter((tool) => {
         const connection = connectionById.get(tool.connectionId);
-        return tool.status === "active" && connection?.enabled === true && connection.status === "active" && !isToolConnectionAttentionHealth(connection.healthStatus);
+        const application = applicationById.get(tool.applicationId ?? "");
+        return tool.status === "active"
+          && application?.status === "active"
+          && connection?.enabled === true
+          && connection.status === "active"
+          && ["healthy", "ok"].includes(connection.healthStatus)
+          && allowedToolIds.has(tool.id)
+          && installedConnectionIds.has(connection.id)
+          && !isToolConnectionAttentionHealth(connection.healthStatus);
       });
       const domains = OPERATING_CAPABILITY_DOMAINS.map((domain) => {
         const tools = usableTools.filter((tool) => matchesOperatingDomain(searchable(tool.name, tool.toolName, tool.title, tool.description, tool.annotations, applicationById.get(tool.applicationId ?? "")?.name), domain.terms));
@@ -51,6 +65,7 @@ export function operatingCapabilityService(db: Db) {
           incomplete: domains.filter((domain) => domain.status !== "ready").length,
           activeMcpTools: usableTools.length,
           compatibleSkills: skills.filter((skill) => skill.compatibility === "compatible").length,
+          operatorAgentId: operator?.id ?? null,
         },
       };
     },
