@@ -33,6 +33,7 @@ import type { Goal } from "./goal.js";
 import type { Project, ProjectWorkspace } from "./project.js";
 import type { ExecutionWorkspace, IssueExecutionWorkspaceSettings } from "./workspace-runtime.js";
 import type { IssueWorkProduct } from "./work-product.js";
+import type { IssueOperationalIntelligencePolicy } from "../operational-intelligence.js";
 import type {
   LowTrustReviewPresetPolicy,
   SourceTrustMetadata,
@@ -677,6 +678,7 @@ export interface IssueExecutionPolicy {
    * default. Human decisions reset the round counter.
    */
   maxReviewRounds?: number | null;
+  operationalIntelligence?: IssueOperationalIntelligencePolicy;
 }
 
 export interface IssueExecutionMonitorState {

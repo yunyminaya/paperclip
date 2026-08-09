@@ -8,11 +8,18 @@ describe("buildNewAgentRuntimeConfig", () => {
     expect(buildNewAgentRuntimeConfig()).toEqual({
       heartbeat: {
         enabled: false,
-        intervalSec: 300,
+        intervalSec: 1800,
         wakeOnDemand: true,
         skipTimerWhenNoActionableWork: true,
         cooldownSec: 10,
         maxConcurrentRuns: AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+      },
+      operationalIntelligence: {
+        enabled: true,
+        planningBeforeDelegation: true,
+        reuseTaskSession: true,
+        outcomeMemoryLimit: 5,
+        routingPolicy: "conservative",
       },
     });
   });
@@ -31,6 +38,13 @@ describe("buildNewAgentRuntimeConfig", () => {
         skipTimerWhenNoActionableWork: true,
         cooldownSec: 10,
         maxConcurrentRuns: AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
+      },
+      operationalIntelligence: {
+        enabled: true,
+        planningBeforeDelegation: true,
+        reuseTaskSession: true,
+        outcomeMemoryLimit: 5,
+        routingPolicy: "conservative",
       },
     });
   });

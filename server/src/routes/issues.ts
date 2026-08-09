@@ -37,6 +37,7 @@ import {
   createIssueAttachmentMetadataSchema,
   createIssueThreadInteractionSchema,
   createIssueWorkProductSchema,
+  createOperationalOutcomeSchema,
   createIssueLabelSchema,
   createAcceptedPlanDecompositionSchema,
   checkoutIssueSchema,
@@ -132,6 +133,7 @@ import {
   projectService,
   routineService,
   workProductService,
+  operationalIntelligenceService,
 } from "../services/index.js";
 import { buildPlanReviewContext } from "../services/plan-review-context.js";
 import {
@@ -2713,6 +2715,7 @@ export function issueRoutes(
   const recoveryActionsSvc = issueRecoveryActionService(db);
   const executionWorkspacesSvc = executionWorkspaceServiceDirect(db);
   const workProductsSvc = workProductService(db);
+  const operationalIntelligenceSvc = operationalIntelligenceService(db);
   const documentsSvc = documentService(db);
   const companySkillsSvc = companySkillService(db);
   const documentAnnotationsSvc = documentAnnotationService(db);
@@ -7023,6 +7026,102 @@ export function issueRoutes(
       entityType: "issue",
       entityId: issue.id,
       details: { workProductId: product.id, type: product.type, provider: product.provider },
+    });
+    await revalidateActiveSourceRecoveryAfterCommittedWrite({
+      issue,
+      trigger: "work_product",
+      actor,
+      workProductChanged: true,
+    });
+    res.status(201).json(product);
+  });
+
+  router.get("/issues/:id/operational-context", async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await getAccessibleResource(req, res, svc.getById(id), "Issue not found");
+    if (!issue) return;
+    if (!(await assertIssueReadAllowed(req, res, issue))) return;
+    const requestedAgentId = typeof req.query.agentId === "string" ? req.query.agentId : null;
+    const agentId = requestedAgentId ?? issue.assigneeAgentId;
+    if (!agentId) {
+      res.status(422).json({ error: "Operational context requires an assigned agent or agentId query parameter" });
+      return;
+    }
+    const agent = await agentsSvc.getById(agentId);
+    if (!agent || agent.companyId !== issue.companyId) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    const context = await operationalIntelligenceSvc.buildContext({
+      companyId: issue.companyId,
+      issueId: issue.id,
+      agentId,
+    });
+    if (!context) {
+      res.status(404).json({ error: "Operational context not found" });
+      return;
+    }
+    res.json(context);
+  });
+
+  router.post("/issues/:id/outcomes", validate(createOperationalOutcomeSchema), async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await getAccessibleResource(req, res, svc.getById(id), "Issue not found");
+    if (!issue) return;
+    if (!(await assertAgentIssueMutationAllowed(req, res, issue))) return;
+    if (!(await assertDeliverableMutationAllowedByRunContext(req, res, issue))) return;
+    const actor = getActorInfo(req);
+    if (actor.agentId && actor.agentId !== req.body.metadata.agentId) {
+      res.status(422).json({ error: "Agents may only record outcomes for themselves" });
+      return;
+    }
+    const outcomeAgent = await agentsSvc.getById(req.body.metadata.agentId);
+    if (!outcomeAgent || outcomeAgent.companyId !== issue.companyId) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    const createdByRunId = await resolveWorkProductCreatedByRunId(
+      req,
+      res,
+      issue.companyId,
+      { createdByRunId: actor.runId ?? null },
+      "create",
+    );
+    if (createdByRunId === undefined) return;
+    const product = await workProductsSvc.createForIssue(issue.id, issue.companyId, {
+      projectId: issue.projectId ?? null,
+      type: "outcome",
+      provider: "paperclip",
+      title: req.body.title,
+      summary: req.body.summary,
+      metadata: req.body.metadata,
+      status: req.body.metadata.status === "failed" ? "failed" : "closed",
+      reviewState: "none",
+      isPrimary: false,
+      healthStatus: "unknown",
+      createdByRunId,
+    });
+    if (!product) {
+      res.status(422).json({ error: "Invalid operational outcome" });
+      return;
+    }
+    await logActivity(db, {
+      companyId: issue.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      agentApiKeyId: actor.agentApiKeyId,
+      action: "issue.operational_outcome_recorded",
+      entityType: "issue",
+      entityId: issue.id,
+      details: {
+        workProductId: product.id,
+        outcomeStatus: req.body.metadata.status,
+        taskClass: req.body.metadata.taskClass,
+        modelLane: req.body.metadata.modelLane,
+        score: req.body.metadata.score ?? null,
+      },
     });
     await revalidateActiveSourceRecoveryAfterCommittedWrite({
       issue,

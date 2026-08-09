@@ -1,4 +1,9 @@
-import type { IssueExecutionPolicy, IssueExecutionStageParticipant, IssueExecutionStagePrincipal } from "@paperclipai/shared";
+import type {
+  IssueExecutionPolicy,
+  IssueExecutionStageParticipant,
+  IssueExecutionStagePrincipal,
+  IssueOperationalIntelligencePolicy,
+} from "@paperclipai/shared";
 import { parseAssigneeValue } from "./assignees";
 
 type StageType = "review" | "approval";
@@ -80,6 +85,7 @@ export function buildExecutionPolicy(input: {
   existingPolicy?: IssueExecutionPolicy | null;
   reviewerValues: string[];
   approverValues: string[];
+  operationalIntelligence?: IssueOperationalIntelligencePolicy | null;
 }): IssueExecutionPolicy | null {
   const mode = input.existingPolicy?.mode ?? "normal";
   const stages: IssueExecutionPolicy["stages"] = [];
@@ -107,12 +113,16 @@ export function buildExecutionPolicy(input: {
     });
   }
 
-  if (stages.length === 0 && !monitor) return null;
+  const operationalIntelligence = input.operationalIntelligence
+    ?? input.existingPolicy?.operationalIntelligence
+    ?? null;
+  if (stages.length === 0 && !monitor && !operationalIntelligence) return null;
 
   return {
     mode,
     commentRequired: true,
     stages,
     ...(monitor ? { monitor } : {}),
+    ...(operationalIntelligence ? { operationalIntelligence } : {}),
   };
 }

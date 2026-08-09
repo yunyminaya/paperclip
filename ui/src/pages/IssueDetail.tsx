@@ -99,6 +99,7 @@ import { IssueAttachmentsSection } from "../components/IssueAttachmentsSection";
 import { IssueDocumentsSection } from "../components/IssueDocumentsSection";
 import { IssuePlanDecompositionsSection } from "../components/IssuePlanDecompositionsSection";
 import { IssueOutputSection } from "../components/issue-output/IssueOutputSection";
+import { IssueOperationalIntelligence } from "../components/IssueOperationalIntelligence";
 import { isImageAttachment, isVideoAttachment } from "../lib/issue-attachments";
 import {
   getIssueOutputs,
@@ -1736,6 +1737,12 @@ export function IssueDetail() {
     queryFn: () => issuesApi.listWorkProducts(issueId!),
     enabled: !!issueId,
     placeholderData: keepPreviousDataForSameQueryTail<IssueWorkProduct[]>(issueId ?? "pending"),
+  });
+
+  const { data: operationalContext, isError: operationalContextFailed } = useQuery({
+    queryKey: ["issue-operational-context", issueId, issue?.assigneeAgentId],
+    queryFn: () => issuesApi.getOperationalContext(issueId!, issue?.assigneeAgentId),
+    enabled: !!issueId && !!issue?.assigneeAgentId,
   });
 
   const { data: liveRunCount = 0 } = useQuery<LiveRunForIssue[], Error, number>({
@@ -4778,6 +4785,10 @@ export function IssueDetail() {
         agentMap={agentMap}
         userProfileMap={userProfileMap}
       />
+      )}
+
+      {taskChatShellEnabled ? null : (
+      <IssueOperationalIntelligence context={operationalContext} failed={operationalContextFailed} />
       )}
 
       {taskChatShellEnabled ? null : (

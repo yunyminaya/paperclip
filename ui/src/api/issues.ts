@@ -24,6 +24,8 @@ import type {
   IssueTreeHold,
   IssueWatchdog,
   IssueWorkProduct,
+  OperationalIntelligenceContext,
+  CreateOperationalOutcome,
   PreviewIssueTreeControl,
   ReleaseIssueTreeHold,
   UpsertIssueWatchdog,
@@ -342,6 +344,12 @@ export const issuesApi = {
   unlinkApproval: (id: string, approvalId: string) =>
     api.delete<{ ok: true }>(`/issues/${id}/approvals/${approvalId}`),
   listWorkProducts: (id: string) => api.get<IssueWorkProduct[]>(`/issues/${id}/work-products`),
+  getOperationalContext: (id: string, agentId?: string | null) => {
+    const query = agentId ? `?agentId=${encodeURIComponent(agentId)}` : "";
+    return api.get<OperationalIntelligenceContext>(`/issues/${id}/operational-context${query}`);
+  },
+  recordOperationalOutcome: (id: string, data: CreateOperationalOutcome) =>
+    api.post<IssueWorkProduct>(`/issues/${id}/outcomes`, data),
   createWorkProduct: (id: string, data: Record<string, unknown>) =>
     api.post<IssueWorkProduct>(`/issues/${id}/work-products`, data),
   updateWorkProduct: (id: string, data: Record<string, unknown>) =>

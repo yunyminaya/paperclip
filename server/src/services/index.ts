@@ -70,6 +70,8 @@ export { activityService, type ActivityFilters } from "./activity.js";
 export { workTimelineService, normalizeTimelineWindow } from "./work-timeline.js";
 export { attentionService } from "./attention.js";
 export { captureDecisionSnapshot, decisionTrainingService } from "./decision-training.js";
+export { operationalIntelligenceService } from "./operational-intelligence.js";
+export { agentAutonomyService } from "./agent-autonomy.js";
 export { decisionService } from "./decisions.js";
 export { decisionRetentionService } from "./decision-retention.js";
 export type {

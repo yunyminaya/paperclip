@@ -16,6 +16,7 @@ import type {
   AgentConfigRevision,
   ClearAgentErrorResponse,
   AgentApiKeyScope,
+  AgentAutonomyMandateResult,
 } from "@paperclipai/shared";
 import type {
   AdapterModelProfileDefinition,
@@ -143,6 +144,17 @@ export const agentsApi = {
     api.patch<Agent>(agentPath(id, companyId), data),
   updatePermissions: (id: string, data: AgentPermissionUpdate, companyId?: string) =>
     api.patch<AgentDetail>(agentPath(id, companyId, "/permissions"), data),
+  configureAutonomy: (
+    id: string,
+    data: {
+      enabled: boolean;
+      executiveMandate: string;
+      allowSkillAcquisition?: boolean;
+      allowToolDiscovery?: boolean;
+      allowAgentHiring?: boolean;
+    },
+    companyId?: string,
+  ) => api.post<AgentAutonomyMandateResult>(agentPath(id, companyId, "/autonomy"), data),
   instructionsBundle: (id: string, companyId?: string) =>
     api.get<AgentInstructionsBundle>(agentPath(id, companyId, "/instructions-bundle")),
   updateInstructionsBundle: (

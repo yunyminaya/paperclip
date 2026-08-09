@@ -16,6 +16,13 @@ export function buildNewAgentRuntimeConfig(input?: {
       cooldownSec: 10,
       maxConcurrentRuns: AGENT_DEFAULT_MAX_CONCURRENT_RUNS,
     },
+    operationalIntelligence: {
+      enabled: true,
+      planningBeforeDelegation: true,
+      reuseTaskSession: true,
+      outcomeMemoryLimit: 5,
+      routingPolicy: "conservative",
+    },
   };
 
   const cheapModel = input?.cheapModel?.trim() ?? "";

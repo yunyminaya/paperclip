@@ -160,3 +160,9 @@ Paperclip’s core identity is a **control plane for autonomous AI companies**, 
 
 9. **Thin core, rich edges**
    Put optional chat, knowledge, and special surfaces into plugins/extensions rather than bloating the control plane.
+
+10. **Operational memory over repeated conversation**
+   Agents should receive a compact role and a bounded brief assembled from approved plans, reusable task sessions, and structured prior outcomes. Cheap model lanes are for explicitly low-risk classification/control work; harder decisions stay on the primary model. Results are recorded as inspectable work products so future routing can be evaluated from evidence rather than transcript volume.
+
+11. **Executive autonomy is broad but governed**
+   A CEO mandate can give an agent every connected company tool, permission to acquire skills, and authority to create specialist agents. Company isolation, budgets, approvals, policy, and audit do not disappear. Agents can autonomously prepare operational and tax work, but irreversible filings, payments, contracts, and regulated communications remain explicit governed actions.

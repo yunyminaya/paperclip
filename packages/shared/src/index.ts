@@ -1,4 +1,5 @@
 export { agentAdapterTypeSchema, optionalAgentAdapterTypeSchema } from "./adapter-type.js";
+export * from "./operational-intelligence.js";
 export {
   decisionEffectStalenessSchema,
   decisionOptionStyleSchema,
@@ -782,6 +783,7 @@ export type {
   AgentAccessState,
   AgentChainOfCommandEntry,
   AgentDetail,
+  AgentAutonomyMandateResult,
   ClearAgentErrorResponse,
   AgentPermissions,
   AgentInstructionsBundleMode,
@@ -1598,6 +1600,8 @@ export {
   builtInAgentResetSchema,
   createAgentHireSchema,
   updateAgentSchema,
+  agentAutonomyConfigSchema,
+  configureAgentAutonomySchema,
   agentInstructionsBundleModeSchema,
   updateAgentInstructionsBundleSchema,
   upsertAgentInstructionsFileSchema,
@@ -1619,6 +1623,7 @@ export {
   type BuiltInAgentReset,
   type CreateAgentHire,
   type UpdateAgent,
+  type ConfigureAgentAutonomy,
   type UpdateAgentInstructionsBundle,
   type UpsertAgentInstructionsFile,
   type UpdateAgentInstructionsPath,
@@ -1728,6 +1733,8 @@ export {
   linkIssueApprovalSchema,
   createIssueAttachmentMetadataSchema,
   createIssueWorkProductSchema,
+  createOperationalOutcomeSchema,
+  operationalOutcomeMetadataSchema,
   issueWorkProductMetadataSchema,
   updateIssueWorkProductSchema,
   attachmentArtifactWorkProductMetadataSchema,
@@ -1793,6 +1800,7 @@ export {
   type LinkIssueApproval,
   type CreateIssueAttachmentMetadata,
   type CreateIssueWorkProduct,
+  type CreateOperationalOutcome,
   type UpdateIssueWorkProduct,
   type UpsertIssueWatchdog,
   type CompanyArtifactsQuery,

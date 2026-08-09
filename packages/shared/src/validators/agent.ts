@@ -10,6 +10,27 @@ import { envConfigSchema } from "./secret.js";
 import { trustAuthorizationPolicySchema, trustPresetSchema } from "./trust-policy.js";
 import { agentDesiredSkillSelectionSchema } from "./adapter-skills.js";
 
+const agentOperationalIntelligenceConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  compactRolePrompt: z.string().trim().min(1).max(800).optional().nullable(),
+  planningBeforeDelegation: z.boolean().optional().default(true),
+  reuseTaskSession: z.boolean().optional().default(true),
+  outcomeMemoryLimit: z.number().int().min(0).max(10).optional().default(5),
+  routingPolicy: z.enum(["manual", "conservative"]).optional().default("conservative"),
+}).strict();
+
+export const agentAutonomyConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  executiveMandate: z.string().trim().min(1).max(4000),
+  allowSkillAcquisition: z.boolean().optional().default(true),
+  allowToolDiscovery: z.boolean().optional().default(true),
+  allowAgentHiring: z.boolean().optional().default(false),
+  toolProfileId: z.string().uuid().optional().nullable(),
+}).strict();
+
+export const configureAgentAutonomySchema = agentAutonomyConfigSchema.omit({ toolProfileId: true });
+export type ConfigureAgentAutonomy = z.infer<typeof configureAgentAutonomySchema>;
+
 export const agentPermissionsSchema = z.object({
   canCreateAgents: z.boolean().optional().default(false),
   canCreateSkills: z.boolean().optional().default(true),
@@ -66,6 +87,8 @@ export const agentRuntimeConfigSchema = z.object({
   modelProfiles: z.object({
     cheap: agentModelProfileConfigSchema.optional(),
   }).strict().optional(),
+  operationalIntelligence: agentOperationalIntelligenceConfigSchema.optional(),
+  autonomy: agentAutonomyConfigSchema.optional(),
 }).catchall(z.unknown());
 
 export const createAgentSchema = z.object({

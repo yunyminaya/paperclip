@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "packageName": "@paperclipai/skills-catalog",
   "packageVersion": "0.3.1",
-  "generatedAt": "2026-07-28T22:35:25.645Z",
+  "generatedAt": "2026-08-09T16:21:08.569Z",
   "skills": [
     {
       "id": "paperclipai:bundled:docs:doc-maintenance",
@@ -1113,6 +1113,51 @@
         "path": "skills/last30days",
         "url": "https://github.com/mvanhorn/last30days-skill/tree/v3.3.0/skills/last30days"
       }
+    },
+    {
+      "id": "paperclipai:optional:sales:outbound-calling",
+      "key": "paperclipai/optional/sales/outbound-calling",
+      "kind": "optional",
+      "category": "sales",
+      "slug": "outbound-calling",
+      "name": "outbound-calling",
+      "description": "Runs governed outbound call campaigns from an approved contact list through a connected voice tool. Use for sales or follow-up, not unapproved or unlawful outreach.",
+      "path": "catalog/optional/sales/outbound-calling",
+      "entrypoint": "SKILL.md",
+      "trustLevel": "markdown_only",
+      "compatibility": "compatible",
+      "defaultInstall": false,
+      "recommendedForRoles": [
+        "cmo",
+        "sales"
+      ],
+      "requires": [],
+      "tags": [
+        "calling",
+        "sales",
+        "telephony"
+      ],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "kind": "skill",
+          "sizeBytes": 3336,
+          "sha256": "c21ba4039a5a985fc4591faa682952961a27d1dee6bd3557a7ea1a592f6dca5a"
+        },
+        {
+          "path": "examples/lead-follow-up.md",
+          "kind": "markdown",
+          "sizeBytes": 874,
+          "sha256": "15713e945885858bd4a5781126b36de1b0bbcc236e6870623eac165e8821141a"
+        },
+        {
+          "path": "examples/provider-missing.md",
+          "kind": "markdown",
+          "sizeBytes": 725,
+          "sha256": "fd0d88a4537adce7ab28fcd0755365320f8f8fb3beaa0fd6bcb00d220e54df56"
+        }
+      ],
+      "contentHash": "sha256:bae42058af09b5fa8d3fe8885e7cd1cf2509f9c51fe9b347ecf78cc5e5f219d7"
     }
   ]
 }

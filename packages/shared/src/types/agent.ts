@@ -15,6 +15,7 @@ import type {
 } from "../trust-policy.js";
 import type { AgentOrgChainHealth } from "../agent-eligibility.js";
 import type { AgentApiKeyScope } from "../validators/agent.js";
+import type { AgentAutonomyConfig, AgentOperationalIntelligenceConfig } from "../operational-intelligence.js";
 
 export interface AgentPermissions extends Record<string, unknown> {
   canCreateAgents: boolean;
@@ -31,6 +32,8 @@ export interface AgentModelProfileConfig {
 
 export interface AgentRuntimeConfig extends Record<string, unknown> {
   modelProfiles?: Partial<Record<ModelProfileKey, AgentModelProfileConfig>>;
+  operationalIntelligence?: AgentOperationalIntelligenceConfig;
+  autonomy?: AgentAutonomyConfig;
 }
 
 export type AgentInstructionsBundleMode = "managed" | "external";
@@ -105,6 +108,19 @@ export interface Agent {
   orgChainHealth?: AgentOrgChainHealth;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AgentAutonomyMandateResult {
+  agent: Agent;
+  autonomy: AgentAutonomyConfig;
+  toolProfile: {
+    id: string;
+    profileKey: string;
+    name: string;
+    defaultAction: "allow" | "deny";
+    status: string;
+  } | null;
+  allowedToolCount: number;
 }
 
 export interface AgentDetail extends Agent {

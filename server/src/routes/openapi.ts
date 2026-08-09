@@ -6,6 +6,7 @@ import {
   createAgentHireSchema,
   updateAgentSchema,
   updateAgentPermissionsSchema,
+  configureAgentAutonomySchema,
   updateAgentInstructionsPathSchema,
   updateAgentInstructionsBundleSchema,
   upsertAgentInstructionsFileSchema,
@@ -32,6 +33,7 @@ import {
   checkoutIssueSchema,
   linkIssueApprovalSchema,
   createIssueWorkProductSchema,
+  createOperationalOutcomeSchema,
   updateIssueWorkProductSchema,
   upsertIssueDocumentSchema,
   restoreIssueDocumentRevisionSchema,
@@ -1774,6 +1776,24 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: "post",
+  path: "/api/agents/{id}/autonomy",
+  tags: ["agents"],
+  summary: "Configure an executive autonomy mandate",
+  request: {
+    params: z.object({ id: z.string() }),
+    body: jsonBody(configureAgentAutonomySchema),
+  },
+  responses: {
+    200: r.ok(),
+    400: r.badRequest,
+    401: r.unauthorized,
+    403: r.forbidden,
+    404: r.notFound,
+  },
+});
+
+registry.registerPath({
   method: "patch",
   path: "/api/agents/{id}/instructions-path",
   tags: ["agents"],
@@ -2124,6 +2144,33 @@ registry.registerPath({
   summary: "Get issue heartbeat context",
   request: { params: z.object({ id: z.string() }) },
   responses: { 200: r.ok(), 401: r.unauthorized },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/issues/{id}/operational-context",
+  tags: ["issues"],
+  summary: "Get the operational intelligence context for an issue",
+  request: { params: z.object({ id: z.string() }) },
+  responses: { 200: r.ok(), 401: r.unauthorized, 403: r.forbidden, 404: r.notFound },
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/issues/{id}/outcomes",
+  tags: ["issues"],
+  summary: "Record a structured operational outcome",
+  request: {
+    params: z.object({ id: z.string() }),
+    body: jsonBody(createOperationalOutcomeSchema),
+  },
+  responses: {
+    200: r.ok(),
+    400: r.badRequest,
+    401: r.unauthorized,
+    403: r.forbidden,
+    404: r.notFound,
+  },
 });
 
 registry.registerPath({

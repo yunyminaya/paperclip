@@ -5,7 +5,10 @@ export type IssueWorkProductType =
   | "branch"
   | "commit"
   | "artifact"
-  | "document";
+  | "document"
+  | "outcome";
+
+export type { OperationalOutcomeMetadata } from "../operational-intelligence.js";
 
 export type IssueWorkProductProvider =
   | "paperclip"

@@ -1838,7 +1838,46 @@ function ConfigurationTab({
   const { tab: urlTab } = useParams<{ tab?: string }>();
   const { pushToast } = useToastActions();
   const [awaitingRefreshAfterSave, setAwaitingRefreshAfterSave] = useState(false);
+  const autonomyConfig = agent.runtimeConfig.autonomy;
+  const [autonomyMandateDraft, setAutonomyMandateDraft] = useState(
+    autonomyConfig?.executiveMandate ?? "Execute the CEO's assigned business outcomes end to end. Discover or create the skills and tools you need, minimize cost, record results, and escalate only governed or genuinely blocked actions.",
+  );
+  const [autonomyCanHire, setAutonomyCanHire] = useState(autonomyConfig?.allowAgentHiring ?? false);
   const lastAgentRef = useRef(agent);
+
+  useEffect(() => {
+    setAutonomyMandateDraft(
+      agent.runtimeConfig.autonomy?.executiveMandate
+        ?? "Execute the CEO's assigned business outcomes end to end. Discover or create the skills and tools you need, minimize cost, record results, and escalate only governed or genuinely blocked actions.",
+    );
+    setAutonomyCanHire(agent.runtimeConfig.autonomy?.allowAgentHiring ?? false);
+  }, [agent.id, autonomyConfig?.executiveMandate, autonomyConfig?.allowAgentHiring]);
+
+  const configureAutonomy = useMutation({
+    mutationFn: (enabled: boolean) => agentsApi.configureAutonomy(agent.id, {
+      enabled,
+      executiveMandate: autonomyMandateDraft,
+      allowSkillAcquisition: enabled,
+      allowToolDiscovery: enabled,
+      allowAgentHiring: enabled && autonomyCanHire,
+    }, companyId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agent.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(agent.companyId) });
+      pushToast({
+        title: result.autonomy.enabled ? "Autonomy enabled" : "Autonomy disabled",
+        body: result.autonomy.enabled
+          ? `${result.allowedToolCount} connected tools are available; policies and approvals still apply.`
+          : "The executive tool profile was unbound.",
+        tone: "success",
+      });
+    },
+    onError: (error) => pushToast({
+      title: "Could not update autonomy",
+      body: error instanceof Error ? error.message : "Unknown error",
+      tone: "error",
+    }),
+  });
 
   const { data: adapterModels } = useQuery({
     queryKey:
@@ -1961,6 +2000,56 @@ function ConfigurationTab({
           })
         }
       />
+
+      <div>
+        <h3 className="mb-3 text-sm font-medium">Executive autonomy</h3>
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="space-y-1">
+            <div className="text-sm">CEO mandate</div>
+            <p className="text-xs text-muted-foreground">
+              Grants every connected company tool and lets the agent discover or create skills. Company boundaries, budgets, tool policies, approvals, and audit remain mandatory.
+            </p>
+          </div>
+          <textarea
+            className="min-h-24 w-full rounded-md border border-border bg-background p-3 text-sm text-foreground"
+            value={autonomyMandateDraft}
+            onChange={(event) => setAutonomyMandateDraft(event.target.value)}
+            aria-label="Executive autonomy mandate"
+          />
+          <div className="flex items-center justify-between gap-4 text-sm">
+            <div className="space-y-1">
+              <div>May hire specialist agents</div>
+              <p className="text-xs text-muted-foreground">
+                Also grants task-assignment authority. Hiring approvals configured by the company still apply.
+              </p>
+            </div>
+            <ToggleSwitch
+              checked={autonomyCanHire}
+              onCheckedChange={setAutonomyCanHire}
+              disabled={configureAutonomy.isPending}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => configureAutonomy.mutate(true)}
+              disabled={configureAutonomy.isPending || !autonomyMandateDraft.trim()}
+            >
+              {autonomyConfig?.enabled ? "Update autonomy" : "Enable autonomy"}
+            </Button>
+            {autonomyConfig?.enabled ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => configureAutonomy.mutate(false)}
+                disabled={configureAutonomy.isPending}
+              >
+                Disable
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
 
       <div>
         <h3 className="text-sm font-medium mb-3">Permissions</h3>

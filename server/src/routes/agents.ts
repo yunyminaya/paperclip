@@ -12,6 +12,7 @@ import {
   createAgentKeySchema,
   createAgentHireSchema,
   createAgentSchema,
+  configureAgentAutonomySchema,
   deriveAgentUrlKey,
   isUuidLike,
   normalizeIssueIdentifier,
@@ -40,6 +41,7 @@ import { trackAgentCreated } from "@paperclipai/shared/telemetry";
 import { validate } from "../middleware/validate.js";
 import {
   agentService,
+  agentAutonomyService,
   agentInstructionsService,
   accessService,
   approvalService,
@@ -184,6 +186,7 @@ export function agentRoutes(
 
   const router = Router();
   const svc = agentService(db);
+  const autonomySvc = agentAutonomyService(db);
   const access = accessService(db);
   const approvalsSvc = approvalService(db);
   const budgets = budgetService(db);
@@ -2818,6 +2821,65 @@ export function agentRoutes(
     });
 
     res.json(await buildAgentDetail(agent));
+  });
+
+  router.post("/agents/:id/autonomy", validate(configureAgentAutonomySchema), async (req, res) => {
+    const id = req.params.id as string;
+    const existing = await getAccessibleResource(req, res, svc.getById(id), "Agent not found");
+    if (!existing) return;
+
+    if (req.actor.type === "agent") {
+      const actorAgent = req.actor.agentId ? await svc.getById(req.actor.agentId) : null;
+      if (!actorAgent || actorAgent.companyId !== existing.companyId || actorAgent.role !== "ceo") {
+        res.status(403).json({ error: "Only the company CEO can issue an autonomy mandate" });
+        return;
+      }
+    } else {
+      await assertBoardCanManageAgentsForCompany(req, existing.companyId);
+    }
+
+    const actor = getActorInfo(req);
+    const result = await autonomySvc.configure({
+      agentId: existing.id,
+      companyId: existing.companyId,
+      mandate: req.body,
+      actor,
+    });
+    if (!result) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+
+    await access.ensureMembership(existing.companyId, "agent", existing.id, "member", "active");
+    await access.setPrincipalPermission(
+      existing.companyId,
+      "agent",
+      existing.id,
+      "tasks:assign",
+      result.autonomy.allowAgentHiring || Boolean(result.agent.permissions?.canCreateAgents),
+      req.actor.type === "board" ? (req.actor.userId ?? null) : null,
+    );
+    await logActivity(db, {
+      companyId: existing.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      agentApiKeyId: actor.agentApiKeyId,
+      action: result.autonomy.enabled ? "agent.autonomy_enabled" : "agent.autonomy_disabled",
+      entityType: "agent",
+      entityId: existing.id,
+      details: {
+        executiveMandate: result.autonomy.executiveMandate,
+        allowSkillAcquisition: result.autonomy.allowSkillAcquisition,
+        allowToolDiscovery: result.autonomy.allowToolDiscovery,
+        allowAgentHiring: result.autonomy.allowAgentHiring,
+        toolProfileId: result.autonomy.toolProfileId ?? null,
+        allowedToolCount: result.allowedToolCount,
+        safetyBoundaries: ["company_isolation", "tool_policy", "approvals", "budget", "audit"],
+      },
+    });
+    res.json(result);
   });
 
   router.patch("/agents/:id/instructions-path", validate(updateAgentInstructionsPathSchema), async (req, res) => {

@@ -36,4 +36,21 @@ describe("buildExecutionPolicy", () => {
       expect(stage.participants[0]?.id).toMatch(UUID_PATTERN);
     }
   });
+
+  it("persists an operational task class without requiring review stages", () => {
+    const policy = buildExecutionPolicy({
+      existingPolicy: null,
+      reviewerValues: [],
+      approverValues: [],
+      operationalIntelligence: {
+        taskClass: "decision",
+        requireApprovedPlan: true,
+      },
+    });
+
+    expect(issueExecutionPolicySchema.parse(policy).operationalIntelligence).toEqual({
+      taskClass: "decision",
+      requireApprovedPlan: true,
+    });
+  });
 });

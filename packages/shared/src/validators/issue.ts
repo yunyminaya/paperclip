@@ -32,6 +32,7 @@ import {
   REQUEST_CHECKBOX_CONFIRMATION_OPTION_LIMIT,
   REQUEST_ITEM_VERDICTS_ITEM_LIMIT,
 } from "../constants.js";
+import { OPERATIONAL_TASK_CLASSES } from "../operational-intelligence.js";
 import { multilineTextSchema } from "./text.js";
 import { lowTrustReviewPresetPolicySchema, trustAuthorizationPolicySchema } from "./trust-policy.js";
 
@@ -253,6 +254,10 @@ export const issueExecutionPolicySchema = z.object({
   reviewPreset: lowTrustReviewPresetPolicySchema.optional(),
   authorizationPolicy: trustAuthorizationPolicySchema.optional(),
   maxReviewRounds: z.number().int().positive().max(50).optional().nullable().default(null),
+  operationalIntelligence: z.object({
+    taskClass: z.enum(OPERATIONAL_TASK_CLASSES).optional().default("implementation"),
+    requireApprovedPlan: z.boolean().optional().default(false),
+  }).strict().optional(),
 });
 
 export const issueExecutionMonitorStateSchema = z.object({

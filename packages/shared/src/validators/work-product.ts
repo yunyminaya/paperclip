@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { workspaceFileRefSchema } from "./workspace-file-resource.js";
+import { OPERATIONAL_TASK_CLASSES } from "../operational-intelligence.js";
 
 function attachmentContentPath(attachmentId: string): string {
   return `/api/attachments/${attachmentId}/content`;
@@ -13,7 +14,30 @@ export const issueWorkProductTypeSchema = z.enum([
   "commit",
   "artifact",
   "document",
+  "outcome",
 ]);
+
+export const operationalOutcomeMetadataSchema = z.object({
+  version: z.literal(1),
+  kind: z.literal("operational_outcome"),
+  taskClass: z.enum(OPERATIONAL_TASK_CLASSES),
+  status: z.enum(["succeeded", "partial", "failed"]),
+  agentId: z.string().uuid(),
+  modelLane: z.enum(["primary", "cheap"]),
+  model: z.string().trim().min(1).max(240).optional().nullable(),
+  skillKeys: z.array(z.string().trim().min(1).max(160)).max(30).optional().default([]),
+  repository: z.string().trim().min(1).max(1000).optional().nullable(),
+  score: z.number().int().min(1).max(5).optional().nullable(),
+  lessons: z.array(z.string().trim().min(1).max(500)).max(10).optional().default([]),
+}).strict();
+
+export const createOperationalOutcomeSchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  summary: z.string().trim().min(1).max(4000),
+  metadata: operationalOutcomeMetadataSchema,
+});
+
+export type CreateOperationalOutcome = z.infer<typeof createOperationalOutcomeSchema>;
 
 export const issueWorkProductStatusSchema = z.enum([
   "active",

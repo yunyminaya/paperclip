@@ -332,6 +332,8 @@ export {
   createAgentHireSchema,
   updateAgentSchema,
   agentRuntimeConfigSchema,
+  agentAutonomyConfigSchema,
+  configureAgentAutonomySchema,
   agentInstructionsBundleModeSchema,
   updateAgentInstructionsBundleSchema,
   upsertAgentInstructionsFileSchema,
@@ -353,6 +355,7 @@ export {
   type BuiltInAgentReset,
   type CreateAgentHire,
   type UpdateAgent,
+  type ConfigureAgentAutonomy,
   type UpdateAgentInstructionsBundle,
   type UpsertAgentInstructionsFile,
   type UpdateAgentInstructionsPath,
@@ -518,6 +521,8 @@ export {
 } from "./issue-tree-control.js";
 
 export {
+  createOperationalOutcomeSchema,
+  operationalOutcomeMetadataSchema,
   createIssueWorkProductSchema,
   issueWorkProductMetadataSchema,
   updateIssueWorkProductSchema,
@@ -526,6 +531,7 @@ export {
   issueWorkProductStatusSchema,
   issueWorkProductReviewStateSchema,
   type CreateIssueWorkProduct,
+  type CreateOperationalOutcome,
   type IssueWorkProductMetadata,
   type UpdateIssueWorkProduct,
 } from "./work-product.js";

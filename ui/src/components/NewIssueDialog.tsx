@@ -1,6 +1,12 @@
 import { memo, useState, useEffect, useRef, useCallback, useMemo, type ChangeEvent, type CSSProperties, type DragEvent, type RefObject } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AgentEnvConfig, EnvBinding, IssueWorkMode } from "@paperclipai/shared";
+import {
+  OPERATIONAL_TASK_CLASSES,
+  type AgentEnvConfig,
+  type EnvBinding,
+  type IssueWorkMode,
+  type OperationalTaskClass,
+} from "@paperclipai/shared";
 import { pickTextColorForSolidBg } from "@/lib/color-contrast";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
@@ -105,6 +111,8 @@ interface IssueDraft {
   selectedExecutionWorkspaceId?: string;
   useIsolatedExecutionWorkspace?: boolean;
   workMode?: IssueWorkMode;
+  operationalTaskClass?: OperationalTaskClass;
+  requireApprovedPlan?: boolean;
 }
 
 type StagedIssueFile = {
@@ -447,6 +455,8 @@ export function NewIssueDialog() {
   const [executionWorkspaceMode, setExecutionWorkspaceMode] = useState<string>("shared_workspace");
   const [selectedExecutionWorkspaceId, setSelectedExecutionWorkspaceId] = useState("");
   const [workMode, setWorkMode] = useState<IssueWorkMode>("standard");
+  const [operationalTaskClass, setOperationalTaskClass] = useState<OperationalTaskClass>("implementation");
+  const [requireApprovedPlan, setRequireApprovedPlan] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [dialogCompanyId, setDialogCompanyId] = useState<string | null>(null);
   const [stagedFiles, setStagedFiles] = useState<StagedIssueFile[]>([]);
@@ -681,6 +691,8 @@ export function NewIssueDialog() {
       executionWorkspaceMode,
       selectedExecutionWorkspaceId,
       workMode,
+      operationalTaskClass,
+      requireApprovedPlan,
     });
   }, [
     newIssueOpen,
@@ -700,6 +712,8 @@ export function NewIssueDialog() {
     executionWorkspaceMode,
     selectedExecutionWorkspaceId,
     workMode,
+    operationalTaskClass,
+    requireApprovedPlan,
   ]);
 
   const handleTitleChange = useCallback((nextTitle: string) => {
@@ -776,6 +790,8 @@ export function NewIssueDialog() {
       setAssigneeChrome(false);
       setExecutionWorkspaceMode(defaultExecutionWorkspaceMode);
       setWorkMode(nextWorkMode);
+      setOperationalTaskClass("implementation");
+      setRequireApprovedPlan(false);
       setSelectedExecutionWorkspaceId(newIssueDefaults.executionWorkspaceId ?? "");
       executionWorkspaceDefaultProjectId.current = hasExplicitProjectWorkspaceId || defaultProject
         ? defaultProjectId || null
@@ -803,6 +819,8 @@ export function NewIssueDialog() {
       setAssigneeChrome(false);
       setExecutionWorkspaceMode(defaultExecutionWorkspaceModeForIssueDefaults(newIssueDefaults, defaultProject));
       setWorkMode(nextWorkMode);
+      setOperationalTaskClass("implementation");
+      setRequireApprovedPlan(false);
       setSelectedExecutionWorkspaceId(newIssueDefaults.executionWorkspaceId ?? "");
       executionWorkspaceDefaultProjectId.current = hasExplicitProjectWorkspaceId || newIssueDefaults.executionWorkspaceId || defaultProject
         ? defaultProjectId || null
@@ -848,6 +866,12 @@ export function NewIssueDialog() {
             ),
       );
       setWorkMode(nextWorkMode);
+      setOperationalTaskClass(
+        OPERATIONAL_TASK_CLASSES.includes(draft.operationalTaskClass as OperationalTaskClass)
+          ? draft.operationalTaskClass as OperationalTaskClass
+          : "implementation",
+      );
+      setRequireApprovedPlan(draft.requireApprovedPlan ?? false);
       setSelectedExecutionWorkspaceId(
         hasExplicitExecutionWorkspaceId
           ? (newIssueDefaults.executionWorkspaceId ?? "")
@@ -862,6 +886,8 @@ export function NewIssueDialog() {
       const defaultProject = orderedProjects.find((project) => project.id === defaultProjectId);
       const hasExplicitProjectWorkspaceId = newIssueDefaults.projectWorkspaceId !== undefined;
       setIssueText("", "");
+      setOperationalTaskClass("implementation");
+      setRequireApprovedPlan(false);
       setStatus(newIssueDefaults.status ?? "todo");
       setPriority(newIssueDefaults.priority ?? "");
       setProjectId(defaultProjectId);
@@ -944,6 +970,8 @@ export function NewIssueDialog() {
     setExecutionWorkspaceMode("shared_workspace");
     setSelectedExecutionWorkspaceId("");
     setWorkMode("standard");
+    setOperationalTaskClass("implementation");
+    setRequireApprovedPlan(false);
     setExpanded(false);
     setDialogCompanyId(null);
     setStagedFiles([]);
@@ -974,6 +1002,8 @@ export function NewIssueDialog() {
     setExecutionWorkspaceMode("shared_workspace");
     setSelectedExecutionWorkspaceId("");
     setWorkMode("standard");
+    setOperationalTaskClass("implementation");
+    setRequireApprovedPlan(false);
   }
 
   function discardDraft() {
@@ -1016,6 +1046,10 @@ export function NewIssueDialog() {
     const executionPolicy = buildExecutionPolicy({
       reviewerValues: reviewerValue ? [reviewerValue] : [],
       approverValues: approverValue ? [approverValue] : [],
+      operationalIntelligence: {
+        taskClass: operationalTaskClass,
+        requireApprovedPlan,
+      },
     });
     createIssue.mutate({
       companyId: effectiveCompanyId,
@@ -1024,7 +1058,7 @@ export function NewIssueDialog() {
       description: currentDescription || undefined,
       status,
       priority: priority || "medium",
-      workMode,
+      workMode: requireApprovedPlan ? "planning" : workMode,
       ...(selectedAssigneeAgentId ? { assigneeAgentId: selectedAssigneeAgentId } : {}),
       ...(selectedAssigneeUserId ? { assigneeUserId: selectedAssigneeUserId } : {}),
       ...(newIssueDefaults.parentId ? { parentId: newIssueDefaults.parentId } : {}),
@@ -1852,6 +1886,42 @@ export function NewIssueDialog() {
             </button>
             {assigneeOptionsOpen && (
               <div className="mt-2 rounded-md border border-border p-3 bg-muted/20 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground" htmlFor="operational-task-class">
+                    Operational task class
+                  </label>
+                  <select
+                    id="operational-task-class"
+                    data-testid="operational-task-class"
+                    className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+                    value={operationalTaskClass}
+                    onChange={(event) => setOperationalTaskClass(event.target.value as OperationalTaskClass)}
+                  >
+                    {OPERATIONAL_TASK_CLASSES.map((taskClass) => (
+                      <option key={taskClass} value={taskClass}>
+                        {taskClass.replace("_", " ")}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-(length:--text-micro) text-muted-foreground">
+                    Classification and control work may use the agent&apos;s cheap model; decisions, research, and implementation stay on the primary model.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 p-2">
+                  <div>
+                    <div className="text-xs text-foreground">Require an approved plan</div>
+                    <p className="text-(length:--text-micro) text-muted-foreground">
+                      Starts in planning mode and uses the existing revisioned plan approval flow.
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    checked={requireApprovedPlan}
+                    onCheckedChange={(checked) => {
+                      setRequireApprovedPlan(checked);
+                      if (checked) setWorkMode("planning");
+                    }}
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <div className="text-xs text-muted-foreground">Model lane</div>
                   <div

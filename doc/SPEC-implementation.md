@@ -159,7 +159,7 @@ Invariant: every business record belongs to exactly one company.
 - `capabilities` text null
 - `adapter_type` text; built-ins include `process`, `http`, `claude_local`, `codex_local`, `gemini_local`, `opencode_local`, `pi_local`, `cursor`, `hermes_local`, `hermes_gateway`, and `openclaw_gateway`
 - `adapter_config` jsonb not null
-- `runtime_config` jsonb not null default `{}`; may include Paperclip runtime policy such as `modelProfiles.cheap.adapterConfig` for an optional low-cost model lane that does not change the primary adapter config
+- `runtime_config` jsonb not null default `{}`; may include Paperclip runtime policy such as `modelProfiles.cheap.adapterConfig` for an optional low-cost model lane that does not change the primary adapter config, and `operationalIntelligence` for a compact role prompt, planning preference, task-session reuse, outcome-memory limit, and conservative routing policy
 - `default_environment_id` uuid fk `environments.id` null
 - `context_mode` enum: `thin | fat` default `thin`
 - `budget_monthly_cents` int not null default 0
@@ -413,6 +413,7 @@ Operational policy:
   - Video attachments are inline-safe and support single `Range: bytes=start-end` requests with `206`, `Content-Range`, and `Accept-Ranges: bytes` for browser playback/seeking.
 - Attachment-backed artifact work products use `type: "artifact"`, `provider: "paperclip"`, and metadata with `attachmentId`, `contentType`, `byteSize`, `contentPath`, `openPath`, `downloadPath`, and optional `originalFilename`.
 - Workspace-only file references use work product `metadata.resourceRef` with `kind: "workspace_file"`, `issueId`, `workspaceKind` (`execution_workspace` or `project_workspace`), `workspaceId`, `relativePath`, optional `line`/`column`, and `displayPath`. These references point at files in a workspace; they do not replace attachment-backed artifacts for deliverables that must be inspectable without workspace access.
+- Structured operational outcomes reuse work products with `type: "outcome"` and `provider: "paperclip"`. Their metadata records task class, agent, model lane/model, skills, repository, status, optional score, and short lessons. The record remains company-scoped and is suitable for later routing evaluation without treating raw transcripts as memory.
 
 ## 7.15 `documents` + `document_revisions` + `issue_documents`
 
@@ -1123,7 +1124,7 @@ Behavior:
 
 ## 11.5 Recovery Model Profiles
 
-The optional `modelProfiles.cheap` lane is not a retry worker lane. Paperclip may request the cheap profile only for status-only recovery coordination, and those wakes must include guard context that prevents deliverable work and document/plan updates (`allowDeliverableWork: false`, `allowDocumentUpdates: false`, `resumeRequiresNormalModel: true`).
+The optional `modelProfiles.cheap` lane is not a retry worker lane. The recovery subsystem may request the cheap profile only for status-only recovery coordination, and those wakes must include guard context that prevents deliverable work and document/plan updates (`allowDeliverableWork: false`, `allowDocumentUpdates: false`, `resumeRequiresNormalModel: true`). Separately, the operational-intelligence policy in section 11.7 may use the same configured profile for explicitly low-risk classification/control tasks; those normal task runs are not recovery retries and remain subject to ordinary issue permissions, approvals, and budgets.
 
 Failed source-work retries, process-loss retries, transient/scheduled retries, max-turn continuations, source-assignee continuations, and downstream source-work child/requeue/resume contexts must use the normal/original model lane. If cheap recovery repairs liveness while actual work remains, the next live continuation path must be a separate normal-model worker run with cheap hints scrubbed.
 
@@ -1140,6 +1141,36 @@ Scheduler must skip invocation when:
 - agent is paused/terminated
 - an existing run is active
 - hard budget limit has been hit
+
+## 11.7 Operational Intelligence Slice
+
+New agents opt into `runtimeConfig.operationalIntelligence`. At heartbeat time Paperclip builds a bounded, company-scoped operational brief from existing control-plane objects:
+
+- the configured compact role prompt, or a compact fallback derived from agent title/role and capabilities
+- the issue task class and whether the current plan revision requires approval
+- whether an existing task-keyed agent session can be reused
+- recent structured outcomes from the same project and task class
+- an explicit model-lane decision and reason
+
+Issue-level policy is stored under `executionPolicy.operationalIntelligence`. `requireApprovedPlan` is paired with planning work mode so the existing revisioned `plan` document and `request_confirmation` flow remain the approval boundary. Approval counts only when it targets the current plan document revision.
+
+Conservative routing may select an enabled cheap profile automatically only for `classification` and `control`. Routine, research, implementation, and decision work remain on the primary model unless the issue explicitly requests the cheap profile. Existing budget hard stops and recovery-lane deliverable restrictions still take precedence.
+
+Operational outcomes are append-only work products through `POST /issues/:id/outcomes`; every write verifies company/agent/run attribution and emits an activity record. `GET /issues/:id/operational-context` exposes the same inspectable brief used by the heartbeat.
+
+## 11.8 Executive Autonomy Mandates
+
+A board operator, or a same-company CEO agent, may configure an executive autonomy mandate through `POST /agents/:id/autonomy`. Enabling it:
+
+- persists a short CEO mandate in the agent runtime configuration
+- enables planning, reusable task sessions, bounded outcome memory, and conservative model routing
+- binds a company-scoped tool profile whose default is to allow every active connected tool
+- optionally permits creating specialist agents and permits acquiring or creating company skills
+- injects the mandate and immutable safety boundaries into heartbeat context
+
+“Allow every tool” means every tool the company has actually connected and the effective profile exposes. Tool policies, company isolation, rate limits, secret handling, approval gates, budget hard stops, and activity logging remain authoritative. Disabling autonomy unbinds the generated profile and restores the permissions captured before the mandate was enabled.
+
+Autonomy is an execution capability, not a revenue guarantee. Agents may prepare bookkeeping, reconciliations, draft tax workpapers, and approval-ready filing packages. Tax submission, payment, binding contracts, regulated communications, and other irreversible legal or financial acts require a configured connector, explicit company policy, and the applicable approval. The optional `outbound-calling` catalog skill applies the same model to CEO-authorized calling lists: validate purpose and suppression state, run a canary, respect cost/rate limits, and persist auditable dispositions.
 
 ## 12. Governance and Approval Flows
 

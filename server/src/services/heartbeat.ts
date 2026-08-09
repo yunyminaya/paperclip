@@ -238,6 +238,7 @@ import {
   reviewPathConsumedRefFromRun,
 } from "./recovery/review-path-recovery.js";
 import { productivityReviewService } from "./productivity-review.js";
+import { operationalIntelligenceService } from "./operational-intelligence.js";
 import { resolveRequiredSuccessfulRunHandoffOnValidPath } from "./successful-run-handoff-state.js";
 import { taskWatchdogService } from "./task-watchdogs.js";
 import { withAgentStartLock } from "./agent-start-lock.js";
@@ -6612,6 +6613,7 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
   const secretsSvc = secretService(db);
   const companySkills = companySkillService(db);
   const issuesSvc = issueService(db);
+  const operationalIntelligence = operationalIntelligenceService(db);
   const treeControlSvc = issueTreeControlService(db);
   const executionWorkspacesSvc = executionWorkspaceService(db);
   const environmentsSvc = environmentService(db);
@@ -13572,6 +13574,41 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             issueContext.assigneeAdapterOverrides,
           )
         : null;
+    const operationalContext = issueContext
+      ? await operationalIntelligence.buildContext({
+          companyId: agent.companyId,
+          issueId: issueContext.id,
+          agentId: agent.id,
+          explicitModelLane: issueAssigneeOverrides?.modelProfile === "cheap" ? "cheap" : null,
+        })
+      : null;
+    if (operationalContext?.enabled) {
+      context.paperclipOperationalIntelligence = operationalContext;
+      if (operationalContext.autonomy?.enabled) {
+        context.paperclipExecutiveMandate = {
+          version: 1,
+          mandate: operationalContext.autonomy.executiveMandate,
+          operatingRule: "Plan before delegating, use connected tools and reusable context, acquire or create missing skills when authorized, minimize cost, record outcomes, and escalate governed or genuinely blocked actions.",
+          safetyBoundaries: ["company_isolation", "tool_policy", "approvals", "budget", "audit"],
+        };
+      } else {
+        delete context.paperclipExecutiveMandate;
+      }
+      if (!operationalContext.session.reuseEnabled) {
+        context.forceFreshSession = true;
+        context.sessionResetReason = "operational intelligence policy disables task-session reuse";
+      }
+      if (
+        operationalContext.routing.appliedLane === "cheap" &&
+        !issueAssigneeOverrides?.modelProfile &&
+        !readContextModelProfile(context)
+      ) {
+        context.modelProfile = "cheap";
+      }
+    } else {
+      delete context.paperclipOperationalIntelligence;
+      delete context.paperclipExecutiveMandate;
+    }
     const isolatedWorkspacesEnabled = (await instanceSettings.getExperimental()).enableIsolatedWorkspaces;
     const parsedIssueExecutionWorkspaceSettings = parseIssueExecutionWorkspaceSettings(
       issueContext?.executionWorkspaceSettings,
